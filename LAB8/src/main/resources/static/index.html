@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Множення матриць</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    input, textarea { margin: 5px; padding: 5px; }
+    button { padding: 10px 20px; }
+    pre { background: #eee; padding: 10px; max-height: 300px; overflow: auto; }
+
+    #output, #output2, #output3 {
+      max-height: 300px;
+      overflow-y: scroll;
+      border: 1px solid #ddd;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Множення матриць (алгоритм Фокса)</h1>
+
+  <hr>
+  <h2>Генерація матриць на сервері</h2>
+  <label>Розмір матриць (NxN): <input type="number" id="size" value="200"></label><br>
+  <label>Кількість потоків: <input type="number" id="threads" value="4"></label><br>
+  <button onclick="calculate()">Обчислити</button>
+
+  <h2>Результат</h2>
+  <div id="time"></div>
+  <div id="output">Натисніть кнопку, щоб розпочати.</div>
+
+  <hr>
+  <h2>Генерація матриць на клієнті</h2>
+
+  <label>Розмір матриць (NxN): <input type="number" id="size3" value="200"></label><br>
+  <label>Кількість потоків: <input type="number" id="threads3" value="4"></label><br>
+  <button onclick="generateAndMultiply()">Згенерувати та обчислити</button>
+
+  <h2>Результат</h2>
+  <div id="time3"></div>
+  <div id="output3">Натисніть кнопку, щоб розпочати.</div>
+
+  <script>
+    function generateMatrix(size) {
+      const matrix = [];
+      for (let i = 0; i < size; i++) {
+        const row = [];
+        for (let j = 0; j < size; j++) {
+          row.push(Math.floor(Math.random() * 10));
+        }
+        matrix.push(row);
+      }
+      return matrix;
+    }
+
+    function renderMatrixToTable(data, containerId) {
+      const table = document.createElement('table');
+      table.style.borderCollapse = 'collapse';
+      let tableHTML = "<tr><th>Рядок/Колонка</th>";
+      for (let j = 0; j < data[0].length; j++) {
+        tableHTML += `<th>Кол. ${j + 1}</th>`;
+      }
+      tableHTML += "</tr>";
+
+      data.forEach((row, rowIndex) => {
+        tableHTML += `<tr><th>Ряд. ${rowIndex + 1}</th>`;
+        row.forEach(cell => {
+          tableHTML += `<td style="border: 1px solid black; padding: 5px;">${cell}</td>`;
+        });
+        tableHTML += "</tr>";
+      });
+
+      table.innerHTML = tableHTML;
+      document.getElementById(containerId).innerHTML = '';
+      document.getElementById(containerId).appendChild(table);
+    }
+
+    async function calculate() {
+      const size = document.getElementById('size').value;
+      const threads = document.getElementById('threads').value;
+
+      document.getElementById('output').textContent = 'Обчислення...';
+      document.getElementById('time').textContent = '';
+
+      const start = performance.now();
+
+      try {
+        const response = await fetch(`/api/matrix/generate?size=${size}&threads=${threads}`);
+        const data = await response.json();
+
+        const end = performance.now();
+        const duration = ((end - start) / 1000).toFixed(2);
+        document.getElementById('time').textContent = `⏱️ Час виконання: ${duration} сек`;
+
+        if (size <= 200) {
+          renderMatrixToTable(data, 'output');
+        } else {
+          document.getElementById('output').textContent = 'Обчислення завершено.';
+        }
+
+      } catch (err) {
+        document.getElementById('output').textContent = 'Помилка: ' + err;
+      }
+    }
+
+    async function generateAndMultiply() {
+      const size = parseInt(document.getElementById('size3').value);
+      const threads = parseInt(document.getElementById('threads3').value);
+
+      const matrix1 = generateMatrix(size);
+      const matrix2 = generateMatrix(size);
+
+      document.getElementById('output3').textContent = 'Обчислення...';
+      document.getElementById('time3').textContent = '';
+
+      const start = performance.now();
+
+      try {
+        const response = await fetch('/api/matrix/multiply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ matrix1, matrix2, threads })
+        });
+
+        const data = await response.json();
+        const end = performance.now();
+        const duration = ((end - start) / 1000).toFixed(2);
+
+        document.getElementById('time3').textContent = `⏱️ Час виконання: ${duration} сек`;
+        if (size <= 200) {
+          renderMatrixToTable(data, 'output3');
+        } else {
+          document.getElementById('output3').textContent = 'Обчислення завершено..';
+        }
+
+      } catch (err) {
+        document.getElementById('output3').textContent = 'Помилка: ' + err;
+      }
+    }
+  </script>
+</body>
+</html>
